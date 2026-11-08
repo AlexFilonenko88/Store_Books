@@ -37,7 +37,10 @@ class BookSerializerValidationTest(SimpleTestCase):
         class FakeBook:
             id = 1
             name = "Книга"
+            author = "Автор"
             price = Decimal("10.00")
 
         data = BookSerializer(instance=FakeBook()).data
-        self.assertEqual(data, {"id": 1, "name": "Книга", "price": "10.00"})
+        self.assertEqual(
+            data, {"id": 1, "name": "Книга", "author": "Автор", "price": "10.00"}
+        )

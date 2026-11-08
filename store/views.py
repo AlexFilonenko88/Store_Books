@@ -15,4 +15,4 @@ class BookViewSet(viewsets.ModelViewSet):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["price"]
+    filterset_fields = ["price", "author"]
