@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from rest_framework import viewsets
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import OrderingFilter
+from django.db.models import Max
 
 from .models import Book
 from .serializers import BookSerializer
@@ -12,7 +14,11 @@ def api_root(request):
 
 
 class BookViewSet(viewsets.ModelViewSet):
-    queryset = Book.objects.all()
     serializer_class = BookSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ["price", "authors"]
+    ordering_fields = ["price", "author_name"]
+    ordering = ["price"]
+
+    def get_queryset(self):
+        return Book.objects.all().annotate(author_name=Max('authors__name'))
