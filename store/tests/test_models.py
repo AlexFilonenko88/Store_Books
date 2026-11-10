@@ -1,10 +1,11 @@
 from decimal import Decimal
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db import DatabaseError, IntegrityError, transaction
 from django.test import TestCase
 
-from store.models import Author, Book
+from store.models import Author, Book, BookLike, BookRating
 
 
 class BookModelTest(TestCase):
@@ -82,3 +83,147 @@ class BookOwnerTest(TestCase):
 
         self.book.refresh_from_db()
         self.assertEqual(self.book.owner, self.owner)
+
+
+class BookLikeModelTest(TestCase):
+    """BookLike: один лайк от одного пользователя на одну книгу."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="reader", password="pw12345")
+        self.book = Book.objects.create(name="Книга", price=Decimal("50.00"))
+
+    def test_like_created_and_readable_both_ways(self):
+        """Лайк читается и со стороны книги, и со стороны пользователя."""
+        like = BookLike.objects.create(book=self.book, user=self.user)
+
+        self.assertEqual(list(self.book.likes.all()), [like])
+        self.assertEqual(list(self.user.liked_books.all()), [like])
+
+    def test_created_at_is_set_automatically(self):
+        """created_at заполняется при создании."""
+        like = BookLike.objects.create(book=self.book, user=self.user)
+
+        self.assertIsNotNone(like.created_at)
+
+    def test_duplicate_like_rejected(self):
+        """UniqueConstraint(book, user): второй лайк от того же пользователя невозможен."""
+        BookLike.objects.create(book=self.book, user=self.user)
+
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                BookLike.objects.create(book=self.book, user=self.user)
+
+    def test_same_user_can_like_different_books(self):
+        """Ограничение действует в паре (book, user), а не по одному пользователю."""
+        other = Book.objects.create(name="Другая книга", price=Decimal("10.00"))
+
+        BookLike.objects.create(book=self.book, user=self.user)
+        BookLike.objects.create(book=other, user=self.user)
+
+        self.assertEqual(BookLike.objects.count(), 2)
+
+    def test_different_users_can_like_same_book(self):
+        """Два пользователя могут лайкнуть одну книгу."""
+        user2 = User.objects.create_user(username="second", password="pw12345")
+
+        BookLike.objects.create(book=self.book, user=self.user)
+        BookLike.objects.create(book=self.book, user=user2)
+
+        self.assertEqual(self.book.likes.count(), 2)
+
+    def test_deleting_book_deletes_likes(self):
+        """on_delete=CASCADE по book: удаление книги убирает её лайки."""
+        like = BookLike.objects.create(book=self.book, user=self.user)
+
+        self.book.delete()
+
+        self.assertFalse(BookLike.objects.filter(pk=like.pk).exists())
+
+    def test_deleting_user_deletes_likes(self):
+        """on_delete=CASCADE по user: удаление пользователя убирает его лайки."""
+        like = BookLike.objects.create(book=self.book, user=self.user)
+
+        self.user.delete()
+
+        self.assertFalse(BookLike.objects.filter(pk=like.pk).exists())
+
+    def test_str_mentions_user_and_book(self):
+        like = BookLike.objects.create(book=self.book, user=self.user)
+
+        self.assertEqual(str(like), "reader -> Книга")
+
+
+class BookRatingModelTest(TestCase):
+    """BookRating: одна оценка 1..5 от одного пользователя на одну книгу."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="reader", password="pw12345")
+        self.book = Book.objects.create(name="Книга", price=Decimal("50.00"))
+
+    def test_rating_created_and_readable_both_ways(self):
+        """Оценка читается и со стороны книги, и со стороны пользователя."""
+        rating = BookRating.objects.create(book=self.book, user=self.user, value=4)
+
+        self.assertEqual(list(self.book.ratings.all()), [rating])
+        self.assertEqual(list(self.user.book_ratings.all()), [rating])
+
+    def test_duplicate_rating_rejected(self):
+        """UniqueConstraint(book, user): вторая оценка невозможна, её нужно обновлять."""
+        BookRating.objects.create(book=self.book, user=self.user, value=4)
+
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                BookRating.objects.create(book=self.book, user=self.user, value=5)
+
+    def test_validation_accepts_border_values(self):
+        """Граничные значения 1 и 5 проходят full_clean."""
+        for value in (1, 5):
+            rating = BookRating(book=self.book, user=self.user, value=value)
+            rating.full_clean(exclude=["created_at"])
+
+    def test_validation_rejects_value_below_range(self):
+        """0 недопустим."""
+        rating = BookRating(book=self.book, user=self.user, value=0)
+
+        with self.assertRaises(ValidationError) as ctx:
+            rating.full_clean(exclude=["created_at"])
+        self.assertIn("value", ctx.exception.message_dict)
+
+    def test_validation_rejects_value_above_range(self):
+        """6 недопустим."""
+        rating = BookRating(book=self.book, user=self.user, value=6)
+
+        with self.assertRaises(ValidationError) as ctx:
+            rating.full_clean(exclude=["created_at"])
+        self.assertIn("value", ctx.exception.message_dict)
+
+    def test_database_does_not_enforce_value_range(self):
+        """Валидаторы работают только в full_clean: create(6) проходит до уровня БД.
+
+        Проверка диапазона обязана быть на входе данных, например в сериализаторе.
+        """
+        rating = BookRating.objects.create(book=self.book, user=self.user, value=6)
+
+        rating.refresh_from_db()
+        self.assertEqual(rating.value, 6)
+
+    def test_deleting_book_deletes_ratings(self):
+        """on_delete=CASCADE по book: удаление книги убирает её оценки."""
+        rating = BookRating.objects.create(book=self.book, user=self.user, value=3)
+
+        self.book.delete()
+
+        self.assertFalse(BookRating.objects.filter(pk=rating.pk).exists())
+
+    def test_deleting_user_deletes_ratings(self):
+        """on_delete=CASCADE по user: удаление пользователя убирает его оценки."""
+        rating = BookRating.objects.create(book=self.book, user=self.user, value=3)
+
+        self.user.delete()
+
+        self.assertFalse(BookRating.objects.filter(pk=rating.pk).exists())
+
+    def test_str_mentions_value(self):
+        rating = BookRating.objects.create(book=self.book, user=self.user, value=4)
+
+        self.assertEqual(str(rating), "reader -> Книга: 4")
