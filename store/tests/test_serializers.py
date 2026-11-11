@@ -41,4 +41,15 @@ class BookSerializerValidationTest(SimpleTestCase):
             authors = []
 
         data = BookSerializer(instance=FakeBook()).data
-        self.assertEqual(data, {"id": 1, "name": "Книга", "authors": [], "price": "10.00"})
+        # Инстанс без аннотаций: счётчики берут default, а не падают KeyError
+        self.assertEqual(
+            data,
+            {
+                "id": 1,
+                "name": "Книга",
+                "authors": [],
+                "price": "10.00",
+                "likes_count": 0,
+                "rating_avg": None,
+            },
+        )
