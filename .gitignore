@@ -34,3 +34,6 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+
+# Local PostgreSQL data
+.pgdata/
