@@ -13,7 +13,13 @@ from .serializers import BookRatingSerializer, BookSerializer
 
 def api_root(request):
     """Индексная страница API — http://127.0.0.1:8000/"""
-    return render(request, "store/index.html")
+    books = (
+        Book.objects.all()
+        .annotate(likes_count=Count("likes", distinct=True))
+        .prefetch_related("authors")
+        .order_by("id")
+    )
+    return render(request, "store/index.html", {"books": books})
 
 
 class BookViewSet(viewsets.ModelViewSet):

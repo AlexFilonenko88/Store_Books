@@ -1,9 +1,10 @@
 from decimal import Decimal
 
+from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from store.models import Author, Book
+from store.models import Author, Book, BookLike
 
 
 class BookFilteringTest(APITestCase):
@@ -98,3 +99,46 @@ class BookOrderingTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # DRF возвращает 200 и игнорирует недопустимое поле — это стандартное поведение
         self.assertEqual(len(response.data), 3)
+
+
+class ApiRootViewTest(APITestCase):
+    """Индексная страница / отдаёт книги с количеством лайков."""
+
+    ROOT_URL = "/"
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="reader", password="pw12345")
+        self.book = Book.objects.create(name="Книга", price=Decimal("50.00"))
+
+    def test_root_page_ok(self):
+        response = self.client.get(self.ROOT_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_context_books_have_likes_count(self):
+        BookLike.objects.create(book=self.book, user=self.user)
+
+        response = self.client.get(self.ROOT_URL)
+
+        books = list(response.context["books"])
+        self.assertEqual(len(books), 1)
+        self.assertEqual(books[0].likes_count, 1)
+
+    def test_zero_likes_without_like_rows(self):
+        response = self.client.get(self.ROOT_URL)
+
+        books = list(response.context["books"])
+        self.assertEqual(books[0].likes_count, 0)
+
+    def test_likes_count_matches_api(self):
+        """Страница и API /api/books/ показывают одинаковое число лайков."""
+        other = User.objects.create_user(username="second", password="pw12345")
+        BookLike.objects.create(book=self.book, user=self.user)
+        BookLike.objects.create(book=self.book, user=other)
+
+        page = self.client.get(self.ROOT_URL)
+        api = self.client.get("/api/books/")
+
+        page_count = list(page.context["books"])[0].likes_count
+        api_count = api.data[0]["likes_count"]
+        self.assertEqual(page_count, api_count)
