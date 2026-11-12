@@ -40,13 +40,20 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "debug_toolbar",
+    "debug_toolbar_force",
     "store",
     "rest_framework",
     "django_filters",
     "social_django",
 ]
 
+DEBUG_TOOLBAR_CONFIG = {
+    "FORCE_ENABLED": True,
+}
+
 MIDDLEWARE = [
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",

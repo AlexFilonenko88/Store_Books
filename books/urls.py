@@ -26,4 +26,5 @@ urlpatterns = [
     path("api/", include("store.urls")),
     # Social Auth (GitHub OAuth2): /oauth/login/github/ -> /oauth/complete/github/
     path("oauth/", include("social_django.urls", namespace="social")),
+    path("__debug__/", include("debug_toolbar.urls")),
 ]
