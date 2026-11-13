@@ -412,7 +412,19 @@
 
         document.querySelector('.btn-close').addEventListener('click', closeAddModal);
         window.addEventListener('click', function(e) {
-            if (e.target === document.getElementById('add-modal')) closeAddModal();
+            const modal = document.getElementById('add-modal');
+            const content = document.querySelector('.modal-content');
+            if (modal.style.display === 'flex' && !content.contains(e.target)) {
+                closeAddModal();
+            }
+        });
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('add-modal');
+                if (modal.style.display === 'flex') {
+                    closeAddModal();
+                }
+            }
         });
 
         document.querySelectorAll('.btn-edit').forEach(btn => {
