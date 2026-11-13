@@ -14,8 +14,10 @@ from .serializers import BookRatingSerializer, BookSerializer
 def api_root(request):
     """Индексная страница API — http://127.0.0.1:8000/"""
     books = (
-        Book.objects.all()
-        .annotate(likes_count=Count("likes", distinct=True))
+        Book.objects.annotate(
+            likes_count=Count("likes", distinct=True),
+            rating_avg=Avg("ratings__value"),
+        )
         .prefetch_related("authors")
         .order_by("id")
     )
@@ -31,22 +33,14 @@ class BookViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return (
-            Book.objects.all()
-            .annotate(
+            Book.objects.annotate(
                 author_name=Max("authors__name"),
                 likes_count=Count("likes", distinct=True),
                 rating_avg=Avg("ratings__value"),
             )
             .prefetch_related("authors")
+            .distinct()
         )
-
-    def _book_stats(self, book):
-        """Счётчики перечитываются из БД, поэтому ответ всегда показывает
-        состояние после изменения, а не из старого queryset."""
-        fresh = Book.objects.filter(pk=book.pk).annotate(
-            likes_count=Count("likes"), rating_avg=Avg("ratings__value")
-        ).get()
-        return {"likes_count": fresh.likes_count, "rating_avg": fresh.rating_avg}
 
     @action(detail=True, methods=["post", "delete"], permission_classes=[IsAuthenticated])
     def like(self, request, pk=None):
@@ -60,6 +54,7 @@ class BookViewSet(viewsets.ModelViewSet):
             BookLike.objects.get_or_create(book=book, user=request.user)
             liked = True
 
+        book = self.get_object()
         payload = {"liked": liked, "book": book.pk}
         payload.update(self._book_stats(book))
         return Response(payload, status=status.HTTP_200_OK)
@@ -76,6 +71,7 @@ class BookViewSet(viewsets.ModelViewSet):
         book = self.get_object()
         if request.method == "DELETE":
             BookRating.objects.filter(book=book, user=request.user).delete()
+            book = self.get_object()
             payload = {"rated": False, "book": book.pk}
             payload.update(self._book_stats(book))
             return Response(payload, status=status.HTTP_200_OK)
@@ -93,10 +89,18 @@ class BookViewSet(viewsets.ModelViewSet):
             user=request.user,
             defaults={"value": serializer.validated_data["value"]},
         )
+        book = self.get_object()
         payload = BookRatingSerializer(rating).data
         payload["rated"] = True
         payload.update(self._book_stats(book))
         return Response(payload, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    def _book_stats(self, book):
+        """Актуальные счётчики из аннотаций queryset, без лишнего запроса."""
+        return {
+            "likes_count": getattr(book, "likes_count", 0),
+            "rating_avg": getattr(book, "rating_avg", None),
+        }
 
 
 class BookRatingViewSet(viewsets.ModelViewSet):

@@ -1,8 +1,6 @@
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-
-
 class Author(models.Model):
     name = models.CharField(max_length=200)
 
@@ -74,6 +72,10 @@ class BookRating(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["book", "user"], name="uniq_book_rating"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(value__gte=1) & models.Q(value__lte=5),
+                name="rating_value_1_to_5",
             ),
         ]
 

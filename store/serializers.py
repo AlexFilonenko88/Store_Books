@@ -4,18 +4,20 @@ from .models import Book, BookRating
 
 
 class BookSerializer(serializers.ModelSerializer):
-    """Книга со счётчиками из аннотаций get_queryset.
+    """Книга с динамически вычисленными счётчиками лайков и средней оценки."""
 
-    default нужен, чтобы сериализатор работал и на книге без аннотаций
-    (например, сразу после POST), где атрибутов likes_count/rating_avg нет.
-    """
-
-    likes_count = serializers.IntegerField(read_only=True, default=0)
-    rating_avg = serializers.FloatField(read_only=True, allow_null=True, default=None)
+    likes_count = serializers.SerializerMethodField(read_only=True)
+    rating_avg = serializers.SerializerMethodField(read_only=True, allow_null=True)
 
     class Meta:
         model = Book
         fields = ["id", "name", "authors", "price", "likes_count", "rating_avg"]
+
+    def get_likes_count(self, obj):
+        return getattr(obj, "likes_count", 0)
+
+    def get_rating_avg(self, obj):
+        return getattr(obj, "rating_avg", None)
 
 
 class BookRatingSerializer(serializers.ModelSerializer):
