@@ -261,6 +261,20 @@
         .btn-add-modal:hover {
             opacity: 0.9;
         }
+        .btn-cancel-modal {
+            background: #484f58;
+            color: #fff;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            font-size: 0.9rem;
+        }
+        .btn-cancel-modal:hover {
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
@@ -357,6 +371,48 @@
         </div>
     </div>
 
+    <!-- Модальное окно редактирования книги -->
+    <div id="edit-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <button class="btn-close">&times;</button>
+            <h3>Изменить книгу</h3>
+            <form id="edit-form">
+                <input type="hidden" id="edit-id">
+                <div class="form-group">
+                    <label for="edit-name">Название</label>
+                    <input type="text" id="edit-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-price">Цена</label>
+                    <input type="number" id="edit-price" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-author">Автор</label>
+                    <select id="edit-author">
+                        <option value="">Без автора</option>
+                    </select>
+                </div>
+                <div id="edit-error"></div>
+                <button type="submit" class="btn-add-modal">Сохранить</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно удаления книги -->
+    <div id="delete-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <button class="btn-close">&times;</button>
+            <h3>Удалить книгу</h3>
+            <p id="delete-text" style="margin-bottom: 1.5rem;">Вы уверены, что хотите удалить книгу?</p>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="button" id="btn-cancel-delete" style="background: #484f58; color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; flex: 1;">Отмена</button>
+                <button type="button" id="btn-confirm-delete" style="background: #f78166; color: #000; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; flex: 1;">Удалить</button>
+            </div>
+        </div>
+    </div>
+
         <script id="authors-json" type="application/json">[
 {% for author in authors %}
             {"id": {{ author.id }}, "name": "{{ author.name|escapejs }}"}{% if not forloop.last %},{% endif %}
@@ -366,6 +422,8 @@
     <script>
         const authors = JSON.parse(document.getElementById('authors-json').textContent);
         let addModalOpen = false;
+        let editModalOpen = false;
+        let deleteModalOpen = false;
 
         function openAddModal() {
             const authorSelect = document.getElementById('add-author');
@@ -380,6 +438,38 @@
             document.getElementById('add-form').reset();
             document.getElementById('add-error').textContent = '';
             addModalOpen = false;
+        }
+
+        function openEditModal(id, name, price) {
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-name').value = name;
+            document.getElementById('edit-price').value = price;
+            const authorSelect = document.getElementById('edit-author');
+            authorSelect.innerHTML = authors.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+            authorSelect.value = '';
+            const modal = document.getElementById('edit-modal');
+            modal.style.display = 'flex';
+            editModalOpen = true;
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+            document.getElementById('edit-form').reset();
+            document.getElementById('edit-error').textContent = '';
+            editModalOpen = false;
+        }
+
+        function openDeleteModal(id) {
+            document.getElementById('delete-text').textContent = `Вы уверены, что хотите удалить книгу #${id}?`;
+            document.getElementById('btn-confirm-delete').dataset.id = id;
+            const modal = document.getElementById('delete-modal');
+            modal.style.display = 'flex';
+            deleteModalOpen = true;
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').style.display = 'none';
+            deleteModalOpen = false;
         }
 
         document.getElementById('add-form').addEventListener('submit', function(e) {
@@ -415,53 +505,105 @@
             });
         });
 
-        document.querySelector('.btn-close').addEventListener('click', function(e) {
-            e.stopPropagation();
-            closeAddModal();
+        document.querySelectorAll('.btn-close').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const modal = this.closest('[id$="-modal"]');
+                if (modal && modal.id === 'add-modal') closeAddModal();
+                if (modal && modal.id === 'edit-modal') closeEditModal();
+                if (modal && modal.id === 'delete-modal') closeDeleteModal();
+            });
         });
         window.addEventListener('click', function(e) {
-            if (!addModalOpen) return;
-            const content = document.querySelector('.modal-content');
-            if (!content.contains(e.target)) {
-                closeAddModal();
+            if (addModalOpen) {
+                const content = document.querySelector('#add-modal .modal-content');
+                if (!content.contains(e.target)) closeAddModal();
+            }
+            if (editModalOpen) {
+                const content = document.querySelector('#edit-modal .modal-content');
+                if (!content.contains(e.target)) closeEditModal();
+            }
+            if (deleteModalOpen) {
+                const content = document.querySelector('#delete-modal .modal-content');
+                if (!content.contains(e.target)) closeDeleteModal();
             }
         });
         window.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && addModalOpen) {
-                closeAddModal();
+            if (e.key === 'Escape') {
+                if (addModalOpen) closeAddModal();
+                if (editModalOpen) closeEditModal();
+                if (deleteModalOpen) closeDeleteModal();
             }
         });
 
-        document.querySelectorAll('.btn-edit').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = this.dataset.id;
-                const name = prompt('Новое название:', this.dataset.name);
-                if (name === null) return;
-                const price = prompt('Новая цена:', this.dataset.price);
-                if (price === null) return;
+        document.getElementById('edit-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            const name = document.getElementById('edit-name').value.trim();
+            const price = document.getElementById('edit-price').value.trim();
+            const authorId = document.getElementById('edit-author').value;
 
-                fetch(`/api/books/${id}/`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name, price: price })
-                })
-                .then(r => {
-                    if (r.ok) location.reload();
-                    else alert('Ошибка при изменении');
-                });
+            if (!name) {
+                document.getElementById('edit-error').textContent = 'Название обязательно';
+                return;
+            }
+            if (!price || isNaN(price) || parseFloat(price) <= 0) {
+                document.getElementById('edit-error').textContent = 'Введите корректную цену';
+                return;
+            }
+
+            const body = { name, price };
+            if (authorId) body.authors = [parseInt(authorId)];
+
+            fetch(`/api/books/${id}/`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+            .then(r => {
+                if (r.ok) {
+                    closeEditModal();
+                    location.reload();
+                } else {
+                    document.getElementById('edit-error').textContent = 'Ошибка при изменении';
+                }
+            });
+        });
+
+        document.getElementById('btn-confirm-delete').addEventListener('click', function(e) {
+            e.stopPropagation();
+            const id = this.dataset.id;
+            fetch(`/api/books/${id}/`, { method: 'DELETE' })
+            .then(r => {
+                if (r.ok) {
+                    closeDeleteModal();
+                    location.reload();
+                } else {
+                    alert('Ошибка при удалении');
+                }
+            });
+        });
+
+        document.getElementById('btn-cancel-delete').addEventListener('click', function(e) {
+            e.stopPropagation();
+            closeDeleteModal();
+        });
+
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const id = this.dataset.id;
+                const name = this.dataset.name;
+                const price = this.dataset.price;
+                openEditModal(id, name, price);
             });
         });
 
         document.querySelectorAll('.btn-delete').forEach(btn => {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
                 const id = this.dataset.id;
-                if (!confirm('Удалить книгу #' + id + '?')) return;
-
-                fetch(`/api/books/${id}/`, { method: 'DELETE' })
-                .then(r => {
-                    if (r.ok) location.reload();
-                    else alert('Ошибка при удалении');
-                });
+                openDeleteModal(id);
             });
         });
 
