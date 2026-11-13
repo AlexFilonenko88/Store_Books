@@ -116,6 +116,30 @@
             transition: color 0.2s, transform 0.2s;
         }
         .link-card:hover .arrow { color: #58a6ff; transform: translateX(3px); }
+        .book-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+        .btn-edit, .btn-delete {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+        .btn-edit {
+            background: #58a6ff;
+            color: #000;
+        }
+        .btn-edit:hover { opacity: 0.9; }
+        .btn-delete {
+            background: #f78166;
+            color: #000;
+        }
+        .btn-delete:hover { opacity: 0.9; }
         .footer {
             margin-top: 2rem;
             text-align: center;
@@ -139,7 +163,7 @@
         <p class="section-title">Книги</p>
         <div class="book-list">
             {% for book in books %}
-            <a class="book-card" href="/api/books/{{ book.id }}/">
+        <div class="book-card">
                 <div class="book-num">{{ book.id }}</div>
                 <div class="book-info">
                     <span class="book-name">{{ book.name }}</span>
@@ -154,7 +178,11 @@
                         {{ book.likes_count }}
                     </span>
                 </div>
-            </a>
+                <div class="book-actions">
+                    <button class="btn-edit" data-id="{{ book.id }}" data-name="{{ book.name|escapejs }}" data-price="{{ book.price }}">Изменить</button>
+                    <button class="btn-delete" data-id="{{ book.id }}">Удалить</button>
+                </div>
+            </div>
             {% empty %}
             <p style="color: #8b949e; font-size: 0.9rem;">Книг пока нет.</p>
             {% endfor %}
@@ -192,5 +220,40 @@
 
         <p class="footer">Books-DRF · {{ books|length }} книг в базе</p>
     </div>
+
+    <script>
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const name = prompt('Новое название:', this.dataset.name);
+                if (name === null) return;
+                const price = prompt('Новая цена:', this.dataset.price);
+                if (price === null) return;
+
+                fetch(`/api/books/${id}/`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, price: price })
+                })
+                .then(r => {
+                    if (r.ok) location.reload();
+                    else alert('Ошибка при изменении');
+                });
+            });
+        });
+
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                if (!confirm('Удалить книгу #' + id + '?')) return;
+
+                fetch(`/api/books/${id}/`, { method: 'DELETE' })
+                .then(r => {
+                    if (r.ok) location.reload();
+                    else alert('Ошибка при удалении');
+                });
+            });
+        });
+    </script>
 </body>
 </html>
