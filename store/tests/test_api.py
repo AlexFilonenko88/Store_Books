@@ -71,8 +71,8 @@ class BookApiReadTest(APITestCase):
         response = self.client.get(LIST_URL)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["name"], "Война и мир")
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["name"], "Война и мир")
 
     def test_retrieve_book(self):
         response = self.client.get(f"{LIST_URL}{self.book.pk}/")
