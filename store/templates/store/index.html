@@ -365,16 +365,21 @@
 
     <script>
         const authors = JSON.parse(document.getElementById('authors-json').textContent);
+        let addModalOpen = false;
+
         function openAddModal() {
             const authorSelect = document.getElementById('add-author');
             authorSelect.innerHTML = authors.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
-            document.getElementById('add-modal').style.display = 'flex';
+            const modal = document.getElementById('add-modal');
+            modal.style.display = 'flex';
+            addModalOpen = true;
         }
 
         function closeAddModal() {
             document.getElementById('add-modal').style.display = 'none';
             document.getElementById('add-form').reset();
             document.getElementById('add-error').textContent = '';
+            addModalOpen = false;
         }
 
         document.getElementById('add-form').addEventListener('submit', function(e) {
@@ -410,20 +415,20 @@
             });
         });
 
-        document.querySelector('.btn-close').addEventListener('click', closeAddModal);
+        document.querySelector('.btn-close').addEventListener('click', function(e) {
+            e.stopPropagation();
+            closeAddModal();
+        });
         window.addEventListener('click', function(e) {
-            const modal = document.getElementById('add-modal');
+            if (!addModalOpen) return;
             const content = document.querySelector('.modal-content');
-            if (modal.style.display === 'flex' && !content.contains(e.target)) {
+            if (!content.contains(e.target)) {
                 closeAddModal();
             }
         });
         window.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                const modal = document.getElementById('add-modal');
-                if (modal.style.display === 'flex') {
-                    closeAddModal();
-                }
+            if (e.key === 'Escape' && addModalOpen) {
+                closeAddModal();
             }
         });
 
