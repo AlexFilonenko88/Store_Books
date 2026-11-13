@@ -465,7 +465,10 @@
             });
         });
 
-        document.querySelector('.btn-add').addEventListener('click', openAddModal);
+        document.querySelector('.btn-add').addEventListener('click', function(e) {
+            e.stopPropagation();
+            openAddModal();
+        });
     </script>
 </body>
 </html>
