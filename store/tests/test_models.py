@@ -197,15 +197,11 @@ class BookRatingModelTest(TestCase):
             rating.full_clean(exclude=["created_at"])
         self.assertIn("value", ctx.exception.message_dict)
 
-    def test_database_does_not_enforce_value_range(self):
-        """Валидаторы работают только в full_clean: create(6) проходит до уровня БД.
-
-        Проверка диапазона обязана быть на входе данных, например в сериализаторе.
-        """
-        rating = BookRating.objects.create(book=self.book, user=self.user, value=6)
-
-        rating.refresh_from_db()
-        self.assertEqual(rating.value, 6)
+    def test_database_enforces_value_range(self):
+        """CheckConstraint(value BETWEEN 1 AND 5) на уровне БД: create(6) падает."""
+        with transaction.atomic():
+            with self.assertRaises(Exception):
+                BookRating.objects.create(book=self.book, user=self.user, value=6)
 
     def test_deleting_book_deletes_ratings(self):
         """on_delete=CASCADE по book: удаление книги убирает её оценки."""

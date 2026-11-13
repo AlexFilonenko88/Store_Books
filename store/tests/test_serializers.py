@@ -39,9 +39,11 @@ class BookSerializerValidationTest(SimpleTestCase):
             name = "Книга"
             price = Decimal("10.00")
             authors = []
+            likes_count = 0
+            rating_avg = None
 
         data = BookSerializer(instance=FakeBook()).data
-        # Инстанс без аннотаций: счётчики берут default, а не падают KeyError
+        # Счётчики — обычные поля модели: сериализатор просто отдаёт их значения
         self.assertEqual(
             data,
             {
