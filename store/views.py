@@ -11,6 +11,7 @@ from .models import Book, BookLike, BookRating
 from .serializers import BookRatingSerializer, BookSerializer
 
 
+@cache_page(1)
 def api_root(request):
     """Индексная страница API — http://127.0.0.1:8000/"""
     books = (
