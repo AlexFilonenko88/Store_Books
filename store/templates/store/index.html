@@ -122,24 +122,17 @@
             flex-shrink: 0;
         }
         .btn-edit, .btn-delete {
-            padding: 0.5rem 0.75rem;
-            font-size: 0.8rem;
+            background: #2ea043;
+            color: #fff;
             border: none;
-            border-radius: 6px;
-            cursor: pointer;
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
             font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
             transition: opacity 0.2s;
         }
-        .btn-edit {
-            background: #58a6ff;
-            color: #000;
-        }
-        .btn-edit:hover { opacity: 0.9; }
-        .btn-delete {
-            background: #f78166;
-            color: #000;
-        }
-        .btn-delete:hover { opacity: 0.9; }
+        .btn-edit:hover, .btn-delete:hover { opacity: 0.9; }
         .btn-add {
             background: #2ea043;
             color: #fff;
@@ -197,6 +190,8 @@
             max-width: 400px;
             width: 90%;
             z-index: 1001;
+            /* По центру по горизонтали и немного ниже центра по вертикали */
+            transform: translateY(45px);
         }
         .modal-content h3 {
             margin-top: 0;
