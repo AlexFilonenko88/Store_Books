@@ -140,6 +140,20 @@
             color: #000;
         }
         .btn-delete:hover { opacity: 0.9; }
+        .btn-add {
+            background: #2ea043;
+            color: #fff;
+            border: none;
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 1rem;
+            transition: opacity 0.2s;
+        }
+        .btn-add:hover { opacity: 0.9; }
         .footer {
             margin-top: 2rem;
             text-align: center;
@@ -161,6 +175,7 @@
         <p class="subtitle">Django REST Framework · PostgreSQL</p>
 
         <p class="section-title">Книги</p>
+        <button class="btn-add">+ Добавить книгу</button>
         <div class="book-list">
             {% for book in books %}
         <div class="book-card">
@@ -252,6 +267,23 @@
                     if (r.ok) location.reload();
                     else alert('Ошибка при удалении');
                 });
+            });
+        });
+
+        document.querySelector('.btn-add').addEventListener('click', function() {
+            const name = prompt('Название книги:');
+            if (name === null || name.trim() === '') return;
+            const price = prompt('Цена (например, 500.00):');
+            if (price === null || price.trim() === '') return;
+
+            fetch('/api/books/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name.trim(), price: price })
+            })
+            .then(r => {
+                if (r.ok) location.reload();
+                else alert('Ошибка при создании книги');
             });
         });
     </script>
