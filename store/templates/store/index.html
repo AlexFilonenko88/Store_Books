@@ -122,8 +122,6 @@
             flex-shrink: 0;
         }
         .btn-edit, .btn-delete {
-            background: #2ea043;
-            color: #fff;
             border: none;
             padding: 0.75rem 1rem;
             font-size: 0.9rem;
@@ -132,18 +130,27 @@
             cursor: pointer;
             transition: opacity 0.2s;
         }
-        .btn-edit:hover, .btn-delete:hover { opacity: 0.9; }
+        .btn-edit {
+            background: #58a6ff;
+            color: #000;
+        }
+        .btn-edit:hover { opacity: 0.9; }
+        .btn-delete {
+            background: #f78166;
+            color: #000;
+        }
+        .btn-delete:hover { opacity: 0.9; }
         .btn-add {
             background: #2ea043;
             color: #fff;
             border: none;
-            padding: 0.75rem 1rem;
+            padding: 0.75rem 1.5rem;
             font-size: 0.9rem;
             font-weight: 600;
             border-radius: 8px;
             cursor: pointer;
-            width: 100%;
-            margin-top: 1rem;
+            display: block;
+            margin: 1rem auto 0;
             transition: opacity 0.2s;
         }
         .btn-add:hover { opacity: 0.9; }
