@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Book, BookLike, BookRating
+from .models import Author, Book, BookLike, BookRating
 from .serializers import BookRatingSerializer, BookSerializer
 
 
@@ -22,7 +22,8 @@ def api_root(request):
         .prefetch_related("authors")
         .order_by("id")
     )
-    return render(request, "store/index.html", {"books": books})
+    authors = Author.objects.all().order_by("name")
+    return render(request, "store/index.html", {"books": books, "authors": authors})
 
 
 @method_decorator(cache_page(60 * 5), name="list")
