@@ -1,9 +1,9 @@
 from django.db.models import Avg, Count, Max
 from django.shortcuts import render
-from django_filters.rest_framework import DjangoFilterBackend
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -11,6 +11,7 @@ from .models import Book, BookLike, BookRating
 from .serializers import BookRatingSerializer, BookSerializer
 
 
+@cache_page(60 * 5)
 def api_root(request):
     """Индексная страница API — http://127.0.0.1:8000/"""
     books = (
@@ -24,9 +25,9 @@ def api_root(request):
     return render(request, "store/index.html", {"books": books})
 
 
+@method_decorator(cache_page(60 * 5), name="list")
 class BookViewSet(viewsets.ModelViewSet):
     serializer_class = BookSerializer
-    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ["price", "authors"]
     ordering_fields = ["price", "author_name", "likes_count", "rating_avg"]
     ordering = ["price"]
@@ -54,7 +55,7 @@ class BookViewSet(viewsets.ModelViewSet):
             BookLike.objects.get_or_create(book=book, user=request.user)
             liked = True
 
-        book = self.get_object()
+        book = self.get_queryset().get(pk=book.pk)
         payload = {"liked": liked, "book": book.pk}
         payload.update(self._book_stats(book))
         return Response(payload, status=status.HTTP_200_OK)
@@ -71,7 +72,7 @@ class BookViewSet(viewsets.ModelViewSet):
         book = self.get_object()
         if request.method == "DELETE":
             BookRating.objects.filter(book=book, user=request.user).delete()
-            book = self.get_object()
+            book = self.get_queryset().get(pk=book.pk)
             payload = {"rated": False, "book": book.pk}
             payload.update(self._book_stats(book))
             return Response(payload, status=status.HTTP_200_OK)
@@ -89,7 +90,7 @@ class BookViewSet(viewsets.ModelViewSet):
             user=request.user,
             defaults={"value": serializer.validated_data["value"]},
         )
-        book = self.get_object()
+        book = self.get_queryset().get(pk=book.pk)
         payload = BookRatingSerializer(rating).data
         payload["rated"] = True
         payload.update(self._book_stats(book))
@@ -111,7 +112,7 @@ class BookRatingViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return BookRating.objects.filter(user=self.request.user).select_related("book")
+        return BookRating.objects.filter(user=self.request.user).select_related("book").order_by("-created_at")
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

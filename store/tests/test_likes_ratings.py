@@ -146,7 +146,7 @@ class BookRatingApiTest(APITestCase):
         response = self.client.get(rating_url(self.book))
         self.assertEqual(response.data["value"], 5)
         list_response = self.client.get(LIST_URL)
-        self.assertAlmostEqual(list_response.data[0]["rating_avg"], 3.0)
+        self.assertAlmostEqual(list_response.data["results"][0]["rating_avg"], 3.0)
 
     def test_get_own_rating(self):
         BookRating.objects.create(book=self.book, user=self.user, value=3)
@@ -235,7 +235,7 @@ class MyRatingsApiTest(APITestCase):
         response = self.client.get(self.RATINGS_URL)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual([r["id"] for r in response.data], [self.own.pk])
+        self.assertEqual([r["id"] for r in response.data["results"]], [self.own.pk])
 
     def test_anonymous_cannot_list_ratings(self):
         self.client.force_authenticate(user=None)
@@ -277,7 +277,7 @@ class BookStatsInListTest(APITestCase):
         response = self.client.get(LIST_URL)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        item = next(b for b in response.data if b["name"] == "Без оценок")
+        item = next(b for b in response.data["results"] if b["name"] == "Без оценок")
         self.assertEqual(item["likes_count"], 0)
         self.assertIsNone(item["rating_avg"])
 
@@ -289,7 +289,7 @@ class BookStatsInListTest(APITestCase):
 
         response = self.client.get(LIST_URL)
 
-        item = next(b for b in response.data if b["name"] == "Популярная")
+        item = next(b for b in response.data["results"] if b["name"] == "Популярная")
         self.assertEqual(item["likes_count"], 2)
         self.assertAlmostEqual(item["rating_avg"], 4.5)
 
@@ -302,7 +302,7 @@ class BookStatsInListTest(APITestCase):
 
         response = self.client.get(LIST_URL)
 
-        item = next(b for b in response.data if b["name"] == "Популярная")
+        item = next(b for b in response.data["results"] if b["name"] == "Популярная")
         self.assertEqual(item["likes_count"], 1)
         self.assertAlmostEqual(item["rating_avg"], 4.0)
 
@@ -311,7 +311,7 @@ class BookStatsInListTest(APITestCase):
 
         response = self.client.get(LIST_URL, {"ordering": "-likes_count"})
 
-        self.assertEqual([b["name"] for b in response.data], ["Популярная", "Без оценок"])
+        self.assertEqual([b["name"] for b in response.data["results"]], ["Популярная", "Без оценок"])
 
     def test_ordering_by_rating_avg_asc_puts_unrated_last(self):
         """Postgres ставит NULL последними при ASC: книга без оценок идёт после оценённой."""
@@ -319,7 +319,7 @@ class BookStatsInListTest(APITestCase):
 
         response = self.client.get(LIST_URL, {"ordering": "rating_avg"})
 
-        self.assertEqual([b["name"] for b in response.data], ["Популярная", "Без оценок"])
+        self.assertEqual([b["name"] for b in response.data["results"]], ["Популярная", "Без оценок"])
 
     def test_ordering_by_rating_avg_desc(self):
         BookRating.objects.create(book=self.popular, user=self.user, value=2)
@@ -327,7 +327,7 @@ class BookStatsInListTest(APITestCase):
 
         response = self.client.get(LIST_URL, {"ordering": "-rating_avg"})
 
-        self.assertEqual([b["name"] for b in response.data], ["Без оценок", "Популярная"])
+        self.assertEqual([b["name"] for b in response.data["results"]], ["Без оценок", "Популярная"])
 
     def test_list_does_not_issue_query_per_book(self):
         for i in range(5):
@@ -335,16 +335,16 @@ class BookStatsInListTest(APITestCase):
             BookLike.objects.create(book=book, user=self.user)
             BookRating.objects.create(book=book, user=self.user, value=3)
 
-        with self.assertNumQueries(2):
+        with self.assertNumQueries(3):
             response = self.client.get(LIST_URL)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 7)
+        self.assertEqual(len(response.data["results"]), 7)
 
     def test_like_then_list_shows_fresh_count(self):
         self.client.post(like_url(self.popular))
 
         response = self.client.get(LIST_URL)
 
-        item = next(b for b in response.data if b["name"] == "Популярная")
+        item = next(b for b in response.data["results"] if b["name"] == "Популярная")
         self.assertEqual(item["likes_count"], 1)

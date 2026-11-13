@@ -24,22 +24,22 @@ class BookFilteringTest(APITestCase):
         """Фильтрация по exact-значению price."""
         response = self.client.get(self.list_url, {"price": "100.00"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
-        for item in response.data:
+        self.assertEqual(len(response.data["results"]), 2)
+        for item in response.data["results"]:
             self.assertEqual(Decimal(item["price"]), Decimal("100.00"))
 
     def test_filter_by_author(self):
         """Фильтрация по exact-author id через M2M."""
         response = self.client.get(self.list_url, {"authors": self.author1.pk})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["name"], "Книга А")
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["name"], "Книга А")
 
     def test_filter_no_match(self):
         """Фильтр, который не совпадает ни с одной книгой, возвращает пустой список."""
         response = self.client.get(self.list_url, {"price": "999.99"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
+        self.assertEqual(len(response.data["results"]), 0)
 
 
 class BookOrderingTest(APITestCase):
@@ -59,35 +59,35 @@ class BookOrderingTest(APITestCase):
         """По умолчанию сортировка по возрастанию цены."""
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        prices = [Decimal(b["price"]) for b in response.data]
+        prices = [Decimal(b["price"]) for b in response.data["results"]]
         self.assertEqual(prices, sorted(prices))
 
     def test_ordering_by_price_asc(self):
         """Сортировка по цене по возрастанию."""
         response = self.client.get(self.list_url, {"ordering": "price"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        prices = [Decimal(b["price"]) for b in response.data]
+        prices = [Decimal(b["price"]) for b in response.data["results"]]
         self.assertEqual(prices, [Decimal("100.00"), Decimal("200.00"), Decimal("300.00")])
 
     def test_ordering_by_price_desc(self):
         """Сортировка по цене по убыванию."""
         response = self.client.get(self.list_url, {"ordering": "-price"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        prices = [Decimal(b["price"]) for b in response.data]
+        prices = [Decimal(b["price"]) for b in response.data["results"]]
         self.assertEqual(prices, [Decimal("300.00"), Decimal("200.00"), Decimal("100.00")])
 
     def test_ordering_by_author_name(self):
         """Сортировка по аннотации author_name: Альфа, Бета, книга без автора."""
         response = self.client.get(self.list_url, {"ordering": "author_name"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        titles = [b["name"] for b in response.data]
+        titles = [b["name"] for b in response.data["results"]]
         self.assertEqual(titles, ["Книга 1", "Книга 2", "Книга 3"])
 
     def test_ordering_by_author_name_desc(self):
         """Сортировка по аннотации author_name по убыванию."""
         response = self.client.get(self.list_url, {"ordering": "-author_name"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        titles = [b["name"] for b in response.data]
+        titles = [b["name"] for b in response.data["results"]]
         # PostgreSQL: NULL первыми при DESC, затем Бета > Альфа
         self.assertEqual(titles[0], "Книга 3")
         self.assertEqual(titles[1], "Книга 2")
@@ -98,7 +98,7 @@ class BookOrderingTest(APITestCase):
         response = self.client.get(self.list_url, {"ordering": "nonexistent"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # DRF возвращает 200 и игнорирует недопустимое поле — это стандартное поведение
-        self.assertEqual(len(response.data), 3)
+        self.assertEqual(len(response.data["results"]), 3)
 
 
 class ApiRootViewTest(APITestCase):
@@ -140,5 +140,5 @@ class ApiRootViewTest(APITestCase):
         api = self.client.get("/api/books/")
 
         page_count = list(page.context["books"])[0].likes_count
-        api_count = api.data[0]["likes_count"]
+        api_count = api.data["results"][0]["likes_count"]
         self.assertEqual(page_count, api_count)
